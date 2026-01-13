@@ -1,0 +1,182 @@
+/* ==== frontend/package.json ==== */
+{
+"name": "griefguardian-frontend",
+"version": "1.0.0",
+"scripts": {
+"dev": "next dev",
+"build": "next build",
+"start": "next start"
+},
+"dependencies": {
+"next": "13.x",
+"react": "18.x",
+"react-dom": "18.x",
+"axios": "1.x"
+}
+}
+
+/* ==== frontend/styles/globals.css ==== */
+body { margin: 0; font-family: Arial, sans-serif; background: #f7f7f7; color: #222; }
+
+/* ==== frontend/pages/_app.js ==== */
+import '../styles/globals.css';
+export default function App({ Component, pageProps }) {
+return <Component {...pageProps} />;
+}
+
+/* ==== frontend/pages/index.js ==== */
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+export default function Home() {
+return (
+
+
+<main style={{ padding: '2em' }}>
+Welcome to GriefGuardian
+Your AI companion for grief support, memory preservation, and healing.
+
+
+
+);
+}
+
+/* ==== frontend/components/Header.js ==== */
+export default function Header() {
+return (
+<header style={{ background: '#6B5B95', color: 'white', padding: '1em', textAlign: 'center' }}>
+GriefGuardian
+
+<a href='/' style={{ margin: '0 1em', color: 'white' }}>Home
+<a href='/chat' style={{ margin: '0 1em', color: 'white' }}>Chat
+<a href='/memories' style={{ margin: '0 1em', color: 'white' }}>Memories
+<a href='/reflection' style={{ margin: '0 1em', color: 'white' }}>Reflection
+<a href='/community' style={{ margin: '0 1em', color: 'white' }}>Community
+<a href='/profile' style={{ margin: '0 1em', color: 'white' }}>Profile
+
+
+);
+}
+
+/* ==== frontend/components/Footer.js ==== */
+export default function Footer() {
+return (
+<footer style={{ background: '#6B5B95', color: 'white', padding: '1em', textAlign: 'center', marginTop: '2em' }}>
+© 2026 GriefGuardian. All rights reserved.
+
+);
+}
+
+/* ==== frontend/components/ChatBox.js ==== */
+import { useState } from 'react';
+export default function ChatBox() {
+const [message, setMessage] = useState('');
+const [chat, setChat] = useState([]);
+
+const sendMessage = async () => {
+if (!message) return;
+setChat([...chat, { user: message, ai: 'AI response placeholder' }]);
+setMessage('');
+};
+
+return (
+
+<div style={{ border: '1px solid #ccc', padding: '1em', minHeight: '300px', marginBottom: '1em', overflowY: 'auto' }}>
+{chat.map((c, i) => (
+You: {c.user}AI: {c.ai}
+))}
+
+<input value={message} onChange={e => setMessage(e.target.value)} placeholder='Type message' style={{ width: '70%', padding: '0.5em' }} />
+<button onClick={sendMessage} style={{ padding: '0.5em 1em', marginLeft: '0.5em' }}>Send
+
+);
+}
+
+/* ==== backend/package.json ==== */
+{
+"name": "griefguardian-backend",
+"version": "1.0.0",
+"main": "server.js",
+"scripts": { "start": "node server.js" },
+"dependencies": {
+"express": "4.x",
+"cors": "2.x",
+"body-parser": "1.x",
+"pg": "8.x",
+"stripe": "12.x",
+"dotenv": "16.x",
+"jsonwebtoken": "9.x",
+"bcrypt": "5.x"
+}
+}
+
+/* ==== backend/config/db.js ==== */
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+module.exports = pool;
+
+/* ==== backend/models/user.js ==== */
+const pool = require('../config/db');
+module.exports = {
+createUser: async (email, passwordHash) => {
+const res = await pool.query('INSERT INTO users(email,password) VALUES($1,$2) RETURNING id,email', [email, passwordHash]);
+return res.rows[0];
+},
+findByEmail: async (email) => {
+const res = await pool.query('SELECT * FROM users WHERE email=$1', [email]);
+return res.rows[0];
+}
+};
+
+/* ==== backend/routes/auth.js ==== */
+const express = require('express');
+const router = express.Router();
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const User = require('../models/user');
+
+router.post('/register', async (req, res) => {
+const { email, password } = req.body;
+const hash = await bcrypt.hash(password, 10);
+const user = await User.createUser(email, hash);
+res.json({ user });
+});
+
+router.post('/login', async (req, res) => {
+const { email, password } = req.body;
+const user = await User.findByEmail(email);
+if (!user) return res.status(404).send('User not found');
+const valid = await bcrypt.compare(password, user.password);
+if (!valid) return res.status(401).send('Invalid password');
+const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+res.json({ token });
+});
+
+module.exports = router;
+
+/* ==== backend/routes/chat.js ==== */
+const express = require('express');
+const router = express.Router();
+router.post('/', async (req, res) => {
+res.json({ response: 'AI response placeholder' });
+});
+module.exports = router;
+
+/* ==== backend/server.js ==== */
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+require('dotenv').config();
+
+const authRoutes = require('./routes/auth');
+const chatRoutes = require('./routes/chat');
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+app.use('/api/auth', authRoutes);
+app.use('/api/chat', chatRoutes);
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(Backend running on port ${PORT}));
+
